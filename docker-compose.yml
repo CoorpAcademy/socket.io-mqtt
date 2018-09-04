@@ -4,3 +4,9 @@ services:
     image: redis:2.8
     ports:
       - "6379:6379"
+
+  activemq:
+    image: rmohr/activemq:latest
+    ports:
+      - "1883:1883"
+      - "8161:8161"
