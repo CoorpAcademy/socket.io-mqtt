@@ -1,11 +1,11 @@
 {
-  "name": "socket.io-redis",
-  "version": "5.2.0",
-  "description": "",
+  "name": "socket.io-mqtt",
+  "version": "0.1.0",
+  "description": "Socket Io Adapter for MQTT",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git@github.com:socketio/socket.io-redis.git"
+    "url": "git@github.com:CoorpAcademy/socket.io-mqtt.git"
   },
   "files": [
     "index.js"
