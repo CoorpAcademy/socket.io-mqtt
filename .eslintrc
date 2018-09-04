@@ -6,7 +6,7 @@
   },
   "extends": [
     "plugin:@coorpacademy/coorpacademy/core",
-    "plugin:@coorpacademy/coorpacademy/ava",
+    "plugin:@coorpacademy/coorpacademy/mocha",
     "plugin:@coorpacademy/coorpacademy/es20XX",
     "plugin:@coorpacademy/coorpacademy/lodash-fp",
     "plugin:@coorpacademy/coorpacademy/prettier"
@@ -19,6 +19,10 @@
     "@coorpacademy/coorpacademy"
   ],
   "rules": {
-    "strict": "off"
+    "strict": "off",
+    "no-param-reassign": "warn",
+    "no-shadow": "warn",
+    "fp/no-loops": "warn",
+    "@coorpacademy/coorpacademy/use-expect": "off"
   }
 }

@@ -4,24 +4,13 @@ const ioc = require('socket.io-client');
 const expect = require('expect.js');
 const adapter = require('..');
 
-const ioredis = require('ioredis').createClient;
-
 let namespace1, namespace2, namespace3;
 let client1, client2, client3;
 let socket1, socket2, socket3;
 
 [
   {
-    name: 'socket.io-redis'
-  },
-  {
-    name: 'socket.io-redis with ioredis',
-    options() {
-      return {
-        pubClient: ioredis(),
-        subClient: ioredis()
-      };
-    }
+    name: 'socket.io-mqtt'
   }
 ].forEach(function(suite) {
   const name = suite.name;
@@ -244,7 +233,7 @@ let socket1, socket2, socket3;
             expect(err).to.be(null);
             const rooms = Object.keys(socket1.rooms);
             expect(rooms).to.have.length(1);
-            expect(rooms).not.to.contain('woot3');
+            expect(rooms).to.not.contain('woot3');
             done();
           });
         });
