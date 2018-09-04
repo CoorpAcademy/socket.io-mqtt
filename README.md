@@ -1,9 +1,9 @@
 # socket.io-mqtt
 
-[![Build Status](https://travis-ci.org/socketio/socket.io-redis.svg?branch=master)](https://travis-ci.org/socketio/socket.io-redis)
-[![NPM version](https://badge.fury.io/js/socket.io-redis.svg)](http://badge.fury.io/js/socket.io-redis)
+[![Build Status](https://travis-ci.org/CoorpAcademy/socket.io-mqtt.svg?branch=master)](https://travis-ci.org/CoorpAcademy/socket.io-mqtt)
+[![NPM version](https://badge.fury.io/js/socket.io-mqtt.svg)](http://badge.fury.io/js/socket.io-mqtt)
 
-# README TO BE UPDATED AND BADGE TOO!
+# README TO BE UPDATED
 
 The Socket.io MQTT adapter has been built by forking the redis adapter.
 
