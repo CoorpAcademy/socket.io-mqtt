@@ -1,7 +1,14 @@
-# socket.io-redis
+# socket.io-mqtt
 
 [![Build Status](https://travis-ci.org/socketio/socket.io-redis.svg?branch=master)](https://travis-ci.org/socketio/socket.io-redis)
 [![NPM version](https://badge.fury.io/js/socket.io-redis.svg)](http://badge.fury.io/js/socket.io-redis)
+
+# README TO BE UPDATED AND BADGE TOO!
+
+The Socket.io MQTT adapter has been built by forking the redis adapter.
+
+Development just started, hence the original redis documentation below:
+
 
 ## How to use
 
