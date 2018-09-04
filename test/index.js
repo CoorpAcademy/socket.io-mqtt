@@ -47,6 +47,7 @@ let socket1, socket2, socket3;
       });
 
       client1.on('broadcast', function() {
+        console.log('CLIENT 1 BROADCAST')
         setTimeout(done, 100);
       });
 
@@ -161,7 +162,7 @@ let socket1, socket2, socket3;
       });
     });
 
-    it('ignores messages from unknown channels', function(done) {
+    xit('ignores messages from unknown channels', function(done) {
       namespace1.adapter.subClient.psubscribe('f?o', function() {
         namespace3.adapter.pubClient.publish('foo', 'bar');
       });
@@ -176,7 +177,7 @@ let socket1, socket2, socket3;
         namespace3.adapter.pubClient.publish('woot', 'toow');
       });
 
-      namespace1.adapter.subClient.on('messageBuffer', function() {
+      namespace1.adapter.subClient.on('message', function() {
         setTimeout(done, 50);
       });
     });
@@ -324,8 +325,8 @@ function cleanup(done) {
   namespace1.adapter.on('error', noop);
   namespace2.adapter.on('error', noop);
   namespace3.adapter.on('error', noop);
-  namespace1.adapter.subClient.quit();
-  namespace2.adapter.subClient.quit();
-  namespace3.adapter.subClient.quit();
+  namespace1.adapter.subClient.end();
+  namespace2.adapter.subClient.end();
+  namespace3.adapter.subClient.end();
   done();
 }

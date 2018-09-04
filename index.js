@@ -3,7 +3,7 @@
  */
 
 const uid2 = require('uid2');
-const redis = require('redis').createClient;
+const mqtt = require('mqtt');
 const msgpack = require('notepack.io');
 const Adapter = require('socket.io-adapter');
 const debug = require('debug')('socket.io-mqtt');
@@ -49,9 +49,9 @@ module.exports = function adapter(uri, opts) {
   function createClient() {
     if (uri) {
       // handle uri string
-      return redis(uri, opts);
+      return mqtt.connect(uri, opts);
     } else {
-      return redis(opts);
+      return mqtt.connect(opts);
     }
   }
 
@@ -74,10 +74,11 @@ module.exports = function adapter(uri, opts) {
     this.uid = uid;
     this.prefix = prefix;
     this.requestsTimeout = requestsTimeout;
+    this.nspNameNorm = nsp.name === '/' ? '@' : nsp.name;
 
-    this.channel = `${prefix}#${nsp.name}#`;
-    this.requestChannel = `${prefix}-request#${this.nsp.name}#`;
-    this.responseChannel = `${prefix}-response#${this.nsp.name}#`;
+    this.channel = `${prefix}/${this.nspNameNorm}`; //  was `${prefix}#${nsp.name}#`
+    this.requestChannel = `${prefix}-request/${this.nspNameNorm}`;
+    this.responseChannel = `${prefix}-response/${this.nspNameNorm}`;
     this.requests = {};
     this.customHook = function(data, cb) {
       cb(null);
@@ -92,17 +93,14 @@ module.exports = function adapter(uri, opts) {
 
     const self = this;
 
-    sub.psubscribe(`${this.channel}*`, function(err) {
+    sub.subscribe(`${this.channel}/#`, function(err) {
       if (err) self.emit('error', err);
     });
-
-    sub.on('pmessageBuffer', this.onmessage.bind(this));
 
     sub.subscribe([this.requestChannel, this.responseChannel], function(err) {
       if (err) self.emit('error', err);
     });
-
-    sub.on('messageBuffer', this.onrequest.bind(this));
+    sub.on('message', this.onmessage.bind(this));
 
     function onError(err) {
       self.emit('error', err);
@@ -123,19 +121,21 @@ module.exports = function adapter(uri, opts) {
    * @api private
    */
 
-  MQTT.prototype.onmessage = function(pattern, channel, msg) {
+  MQTT.prototype.onmessage = function(channel, msg) {
+    console.log('ON MESSAGE(channel)', channel)
     channel = channel.toString();
 
     if (!this.channelMatches(channel, this.channel)) {
-      return debug('ignore different channel');
+      return debug('ignore different channel %s', channel, this.channel);
     }
 
-    const room = channel.slice(this.channel.length, -1);
+    const room = channel.split('/')[2] || '';
     if (room !== '' && !this.rooms.hasOwnProperty(room)) {
       return debug('ignore unknown room %s', room);
     }
 
     const args = msgpack.decode(msg);
+    console.log('ONMESSAGE ARGS', args)
     let packet;
 
     if (uid === args.shift()) return debug('ignore same uid');
@@ -143,10 +143,12 @@ module.exports = function adapter(uri, opts) {
     packet = args[0];
 
     if (packet && packet.nsp === undefined) {
-      packet.nsp = '/';
+      console.log('UNSPECIFYED NSP')
+      packet.nsp = '@'; // §was /, but cant use it in mqtt
     }
 
-    if (!packet || packet.nsp != this.nsp.name) {
+    if (!packet || packet.nsp !== this.nspNameNorm) {
+      console.log('PACKAGE NSP', packet.nsp,  this.nsp.name)
       return debug('ignore different namespace');
     }
 
@@ -182,6 +184,7 @@ module.exports = function adapter(uri, opts) {
 
     debug('received request %j', request);
 
+    let response;
     switch (request.type) {
       case requestTypes.clients:
         Adapter.prototype.clients.call(self, request.rooms, function(err, clients) {
@@ -190,7 +193,7 @@ module.exports = function adapter(uri, opts) {
             return;
           }
 
-          const response = JSON.stringify({
+          response = JSON.stringify({
             requestid: request.requestid,
             clients
           });
@@ -210,7 +213,7 @@ module.exports = function adapter(uri, opts) {
             return;
           }
 
-          const response = JSON.stringify({
+          response = JSON.stringify({
             requestid: request.requestid,
             rooms
           });
@@ -220,7 +223,7 @@ module.exports = function adapter(uri, opts) {
         break;
 
       case requestTypes.allRooms:
-        var response = JSON.stringify({
+        response = JSON.stringify({
           requestid: request.requestid,
           rooms: Object.keys(this.rooms)
         });
@@ -235,7 +238,7 @@ module.exports = function adapter(uri, opts) {
         }
 
         socket.join(request.room, function() {
-          const response = JSON.stringify({
+          response = JSON.stringify({
             requestid: request.requestid
           });
 
@@ -266,7 +269,7 @@ module.exports = function adapter(uri, opts) {
 
         socket.disconnect(request.close);
 
-        var response = JSON.stringify({
+        response = JSON.stringify({
           requestid: request.requestid
         });
 
@@ -275,7 +278,7 @@ module.exports = function adapter(uri, opts) {
 
       case requestTypes.customRequest:
         this.customHook(request.data, function(data) {
-          const response = JSON.stringify({
+          response = JSON.stringify({
             requestid: request.requestid,
             data
           });
@@ -298,6 +301,7 @@ module.exports = function adapter(uri, opts) {
 
   MQTT.prototype.onresponse = function(channel, msg) {
     const self = this;
+    console.log('ON RESPONSE(channel, msg)', channel, msg)
     let response;
 
     try {
@@ -397,15 +401,17 @@ module.exports = function adapter(uri, opts) {
    */
 
   MQTT.prototype.broadcast = function(packet, opts, remote) {
-    packet.nsp = this.nsp.name;
+    console.log('BrOADCAST');
+    packet.nsp = this.nspNameNorm;
     if (!(remote || (opts && opts.flags && opts.flags.local))) {
       const msg = msgpack.encode([uid, packet, opts]);
       let channel = this.channel;
+      console.log(opts)
       if (opts.rooms && opts.rooms.length === 1) {
-        channel += `${opts.rooms[0]}#`;
+        channel += `/${opts.rooms[0]}`; // was #..#
       }
       debug('publishing message to channel %s', channel);
-      pub.publish(channel, msg);
+      pub.publish(channel, msg, console.error);
     }
     Adapter.prototype.broadcast.call(this, packet, opts);
   };
@@ -525,7 +531,7 @@ module.exports = function adapter(uri, opts) {
   MQTT.prototype.allRooms = function(fn) {
     const self = this;
     const requestid = uid2(6);
-
+    // §FIXME SEND_COMMAND
     pub.send_command('pubsub', ['numsub', self.requestChannel], function(err, numsub) {
       if (err) {
         self.emit('error', err);
@@ -706,7 +712,7 @@ module.exports = function adapter(uri, opts) {
    * @param {Function} callback
    * @api public
    */
-
+// §FIXME
   MQTT.prototype.customRequest = function(data, fn) {
     if (typeof data === 'function') {
       fn = data;
@@ -715,7 +721,7 @@ module.exports = function adapter(uri, opts) {
 
     const self = this;
     const requestid = uid2(6);
-
+    // §FIXME WTF is sendCommand?
     pub.send_command('pubsub', ['numsub', self.requestChannel], function(err, numsub) {
       if (err) {
         self.emit('error', err);
