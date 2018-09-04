@@ -6,13 +6,7 @@ const uid2 = require('uid2');
 const redis = require('redis').createClient;
 const msgpack = require('notepack.io');
 const Adapter = require('socket.io-adapter');
-const debug = require('debug')('socket.io-redis');
-
-/**
- * Module exports.
- */
-
-module.exports = adapter;
+const debug = require('debug')('socket.io-mqtt');
 
 /**
  * Request types, for messages between nodes
@@ -36,7 +30,7 @@ const requestTypes = {
  * @api public
  */
 
-function adapter(uri, opts) {
+module.exports = function adapter(uri, opts) {
   opts = opts || {};
 
   // handle options only
@@ -74,7 +68,7 @@ function adapter(uri, opts) {
    * @api public
    */
 
-  function Redis(nsp) {
+  function MQTT(nsp) {
     Adapter.call(this, nsp);
 
     this.uid = uid;
@@ -89,16 +83,10 @@ function adapter(uri, opts) {
       cb(null);
     };
 
-    if (String.prototype.startsWith) {
-      this.channelMatches = function(messageChannel, subscribedChannel) {
-        return messageChannel.startsWith(subscribedChannel);
-      };
-    } else {
-      // Fallback to other impl for older Node.js
-      this.channelMatches = function(messageChannel, subscribedChannel) {
-        return messageChannel.substr(0, subscribedChannel.length) === subscribedChannel;
-      };
-    }
+    this.channelMatches = function(messageChannel, subscribedChannel) {
+      return messageChannel.startsWith(subscribedChannel);
+    };
+
     this.pubClient = pub;
     this.subClient = sub;
 
@@ -127,7 +115,7 @@ function adapter(uri, opts) {
    * Inherits from `Adapter`.
    */
 
-  Redis.prototype.__proto__ = Adapter.prototype;
+  MQTT.prototype.__proto__ = Adapter.prototype;
 
   /**
    * Called with a subscription message
@@ -135,7 +123,7 @@ function adapter(uri, opts) {
    * @api private
    */
 
-  Redis.prototype.onmessage = function(pattern, channel, msg) {
+  MQTT.prototype.onmessage = function(pattern, channel, msg) {
     channel = channel.toString();
 
     if (!this.channelMatches(channel, this.channel)) {
@@ -173,7 +161,7 @@ function adapter(uri, opts) {
    * @api private
    */
 
-  Redis.prototype.onrequest = function(channel, msg) {
+  MQTT.prototype.onrequest = function(channel, msg) {
     channel = channel.toString();
 
     if (this.channelMatches(channel, this.responseChannel)) {
@@ -308,7 +296,7 @@ function adapter(uri, opts) {
    * @api private
    */
 
-  Redis.prototype.onresponse = function(channel, msg) {
+  MQTT.prototype.onresponse = function(channel, msg) {
     const self = this;
     let response;
 
@@ -408,7 +396,7 @@ function adapter(uri, opts) {
    * @api public
    */
 
-  Redis.prototype.broadcast = function(packet, opts, remote) {
+  MQTT.prototype.broadcast = function(packet, opts, remote) {
     packet.nsp = this.nsp.name;
     if (!(remote || (opts && opts.flags && opts.flags.local))) {
       const msg = msgpack.encode([uid, packet, opts]);
@@ -430,7 +418,7 @@ function adapter(uri, opts) {
    * @api public
    */
 
-  Redis.prototype.clients = function(rooms, fn) {
+  MQTT.prototype.clients = function(rooms, fn) {
     if (typeof rooms === 'function') {
       fn = rooms;
       rooms = null;
@@ -492,7 +480,7 @@ function adapter(uri, opts) {
    * @api public
    */
 
-  Redis.prototype.clientRooms = function(id, fn) {
+  MQTT.prototype.clientRooms = function(id, fn) {
     const self = this;
     const requestid = uid2(6);
 
@@ -534,7 +522,7 @@ function adapter(uri, opts) {
    * @api public
    */
 
-  Redis.prototype.allRooms = function(fn) {
+  MQTT.prototype.allRooms = function(fn) {
     const self = this;
     const requestid = uid2(6);
 
@@ -589,7 +577,7 @@ function adapter(uri, opts) {
    * @api public
    */
 
-  Redis.prototype.remoteJoin = function(id, room, fn) {
+  MQTT.prototype.remoteJoin = function(id, room, fn) {
     const self = this;
     const requestid = uid2(6);
 
@@ -633,7 +621,7 @@ function adapter(uri, opts) {
    * @api public
    */
 
-  Redis.prototype.remoteLeave = function(id, room, fn) {
+  MQTT.prototype.remoteLeave = function(id, room, fn) {
     const self = this;
     const requestid = uid2(6);
 
@@ -675,7 +663,7 @@ function adapter(uri, opts) {
    * @param {Function} callback
    */
 
-  Redis.prototype.remoteDisconnect = function(id, close, fn) {
+  MQTT.prototype.remoteDisconnect = function(id, close, fn) {
     const self = this;
     const requestid = uid2(6);
 
@@ -719,7 +707,7 @@ function adapter(uri, opts) {
    * @api public
    */
 
-  Redis.prototype.customRequest = function(data, fn) {
+  MQTT.prototype.customRequest = function(data, fn) {
     if (typeof data === 'function') {
       fn = data;
       data = null;
@@ -771,11 +759,11 @@ function adapter(uri, opts) {
     });
   };
 
-  Redis.uid = uid;
-  Redis.pubClient = pub;
-  Redis.subClient = sub;
-  Redis.prefix = prefix;
-  Redis.requestsTimeout = requestsTimeout;
+  MQTT.uid = uid;
+  MQTT.pubClient = pub;
+  MQTT.subClient = sub;
+  MQTT.prefix = prefix;
+  MQTT.requestsTimeout = requestsTimeout;
 
-  return Redis;
-}
+  return MQTT;
+};
